@@ -175,6 +175,7 @@ def main():
         tb.blocks_file_sink_0 = blocks.file_sink(
             gr.sizeof_gr_complex*1, file_sink_name, False)
         tb.blocks_file_sink_0.set_unbuffered(False)
+        tb.disconnect_all()
         tb.connect((tb.osmosdr_source_0, 0), (tb.blocks_file_sink_0, 0))
 
         thread_top_block = threading.Thread(target=run_tb)
