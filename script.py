@@ -27,6 +27,7 @@ sniffer_config = config['PACKET.SNIFFER']
 freq_multiplier = float(general_config['FreqMultiplier'])
 start_freq = int(general_config['FreqRangStart'])
 end_freq = int(general_config['FreqRangeEnd'])
+step = int(general_config['Step'])
 out_folder = general_config['OutputFolderPath']
 
 sample_rate = float(hardware_config['SampleRate']) * 1e06
@@ -169,7 +170,7 @@ def sniffPackets(freq, pcap_path):
 
 # region Main Thread
 def main():
-    for freq in range(start_freq, end_freq+1):
+    for freq in range(start_freq, end_freq+1, step):
         tb.osmosdr_source_0.set_center_freq(freq * 1e6)
         file_sink_name, path = fresh_start(freq)
         tb.blocks_file_sink_0 = blocks.file_sink(
