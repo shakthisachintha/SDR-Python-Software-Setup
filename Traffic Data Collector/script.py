@@ -38,7 +38,8 @@ agc = bool(True if hardware_config['GainControl'] == 'True' else False)
 
 packet_burst_count = int(sender_config['BurstSize'])
 packet_destination = sender_config['PacketDestination']
-packet_stop_destination = sender_config['StopDestionation'] 
+packet_stop_destination = sender_config['StopDestionation']
+packet_payload_size = sender_config["PacketPayloadSize"]
 
 sniffer_interface = sniffer_config['Interface']
 # endregion
@@ -77,6 +78,8 @@ class my_top_block(gr.top_block):
 # region Top Block Functions
 tb = my_top_block()
 
+# sniffer stop flag
+stop_sniff = False
 
 def run_tb():
     print(f"Frequency: {tb.osmosdr_source_0.get_center_freq()/1e6} Mhz")
@@ -99,19 +102,161 @@ def stop_tb():
 
 
 # region Fresh Start
-def fresh_start(freq):
+def fresh_start(freq, pattern):
     freq = f"{freq}MHZ"
     folder_name = f"./Data/{freq}"
     if not os.path.isdir(folder_name):
         os.mkdir(folder_name)
     path = f"{folder_name}/"
-    file_name = f"{path}{freq}.iq"
+    file_name = f"{path}{pattern}_{freq}.iq"
     open(file_name, "w").close()
     return (file_name, path)
 # endregion
 
 
 # region Packets Sender
+def P0(c):
+    '''IDLE Line No Traffic'''
+    print("\tPattern: P0 Line IDLE")
+    # wait to start packet sending
+    print("\tSender: Waiting for sniffer")
+    evt_sniffer_ready.wait()
+    evt_start_data_collection.set()
+    print("\tSender: Start data collection")
+    evt_data_collection_started.wait()
+    time.sleep(0.2)
+    print("\tPacket sending started")
+    # Send packets
+    time.sleep(2.5)
+    # This packet commands to stop the sniffing
+    # send((IP(dst=packet_stop_destination) / TCP() / Raw(load="payload")), verbose=False, iface = sniffer_interface)
+    stop_tb()
+    global stop_sniff
+    stop_sniff = True
+    print("\tPackets sent")
+
+def P1(count=50):
+    '''P1 - 50 UDP - None Zero'''
+    # maximum packet size is 1500, 40 bytes for IP & TCP headers
+    payload = bytearray([1] * 1400)
+    ip_packet = IP(dst=packet_destination)/UDP()/Raw(load=payload)
+    print("\tPattern: P1 50 UDP None Zero")
+    # wait to start packet sending
+    print("\tSender: Waiting for sniffer")
+    evt_sniffer_ready.wait()
+    evt_start_data_collection.set()
+    print("\tSender: Start data collection")
+    evt_data_collection_started.wait()
+    time.sleep(0.2)
+    print("\tPacket sending started")
+    # Send packets
+    send(ip_packet, count=count, verbose=False, iface = sniffer_interface)
+    
+    # This packet commands to stop the sniffing
+    # send((IP(dst=packet_stop_destination) / TCP() / Raw(load=payload)), verbose=False, iface = sniffer_interface)
+    stop_tb()
+    global stop_sniff
+    stop_sniff = True
+    print("\tPackets sent")
+
+def P2(count=50):
+    '''P1 - 50 UDP - All Zero'''
+    # maximum packet size is 1500, 28 bytes for UDP & IP headers
+    payload = bytearray(1400)
+    ip_packet = IP(dst=packet_destination)/UDP()/Raw(load=payload)
+    print("\tPattern: P2 - 50 UDP - All Zero")
+    # wait to start packet sending
+    print("\tSender: Waiting for sniffer")
+    evt_sniffer_ready.wait()
+    evt_start_data_collection.set()
+    print("\tSender: Start data collection")
+    evt_data_collection_started.wait()
+    time.sleep(0.2)
+    print("\tPacket sending started")
+    # Send packets
+    send(ip_packet, count=count, verbose=False, iface = sniffer_interface)
+    
+    # This packet commands to stop the sniffing
+    # send((IP(dst=packet_stop_destination) / TCP() / Raw(load=payload)), verbose=False, iface = sniffer_interface)
+    stop_tb()
+    global stop_sniff
+    stop_sniff = True
+    print("\tPackets sent")
+
+
+def P3(count = 50):
+    '''P3 - 50 TCP - None Zero Payload'''
+    # maximum packet size is 1500, 40 bytes for IP & TCP headers
+    payload = bytearray([1] * 1460)
+    ip_packet = IP(dst=packet_destination)/TCP()/Raw(load=payload)
+    print("\tPattern: P4 50 TCP None Zero")
+    # wait to start packet sending
+    print("\tSender: Waiting for sniffer")
+    evt_sniffer_ready.wait()
+    evt_start_data_collection.set()
+    print("\tSender: Start data collection")
+    evt_data_collection_started.wait()
+    time.sleep(0.2)
+    print("\tPacket sending started")
+    # Send packets
+    send(ip_packet, count=count, verbose=False, iface = sniffer_interface)
+    
+    # This packet commands to stop the sniffing
+    # send((IP(dst=packet_stop_destination) / TCP() / Raw(load=payload)), verbose=False, iface = sniffer_interface)
+    stop_tb()
+    global stop_sniff
+    stop_sniff = True
+    print("\tPackets sent")
+
+
+def P4(count = 50):
+    '''P2 - 50 TCP - All Zero'''
+    # maximum packet size is 1500, 40 bytes for IP & TCP headers
+    payload = bytearray(1460)
+    ip_packet = IP(dst=packet_destination)/TCP()/Raw(load=payload)
+    print("\tPattern: P4 50 TCP All Zero")
+    # wait to start packet sending
+    print("\tSender: Waiting for sniffer")
+    evt_sniffer_ready.wait()
+    evt_start_data_collection.set()
+    print("\tSender: Start data collection")
+    evt_data_collection_started.wait()
+    time.sleep(0.2)
+    print("\tPacket sending started")
+    # Send packets
+    send(ip_packet, count=count, verbose=False, iface = sniffer_interface)
+    
+    # This packet commands to stop the sniffing
+    # send((IP(dst=packet_stop_destination) / TCP() / Raw(load=payload)), verbose=False, iface = sniffer_interface)
+    stop_tb()
+    global stop_sniff
+    stop_sniff = True
+    print("\tPackets sent")
+
+def P5(count = 50):
+    '''P3 - 50 IP - All Zero'''
+    # maximum packet size is 1500, 40 bytes for IP & TCP headers
+    payload = bytearray(1460)
+    ip_packet = IP(dst=packet_destination)/Raw(load=payload)
+    print("\tPattern: P5 50 IP All Zero")
+    # wait to start packet sending
+    print("\tSender: Waiting for sniffer")
+    evt_sniffer_ready.wait()
+    evt_start_data_collection.set()
+    print("\tSender: Start data collection")
+    evt_data_collection_started.wait()
+    time.sleep(0.2)
+    print("\tPacket sending started")
+    # Send packets
+    send(ip_packet, count=count, verbose=False, iface = sniffer_interface)
+    
+    # This packet commands to stop the sniffing
+    # send((IP(dst=packet_stop_destination) / TCP() / Raw(load=payload)), verbose=False, iface = sniffer_interface)
+    stop_tb()
+    global stop_sniff
+    stop_sniff = True
+    print("\tPackets sent")
+
 def sendPackets(count=100):
     payload = 'PAYLOAD'
     for i in range(2):
@@ -128,10 +273,13 @@ def sendPackets(count=100):
     time.sleep(0.5)
     print("\tPacket sending started")
     # Send packets
-    send(ip_packet, count=count, verbose=False)
+    send(ip_packet, count=count, verbose=False, iface=sniffer_interface)
 
     # This packet commands to stop the sniffing
-    send((IP(dst=packet_stop_destination) / TCP() / Raw(load=payload)), verbose=False)
+    # send((IP(dst=packet_stop_destination) / TCP() / Raw(load=payload)), verbose=False)
+    stop_tb()
+    global stop_sniff
+    stop_sniff = True
     print("\tPackets sent")
 # endregion
 
@@ -143,60 +291,65 @@ def stopfilter(x):
     else:
         return False
 
+def stopfilter2(x):
+    global stop_sniff
+    return stop_sniff
+
 
 def packetFilter(x):
     # Filter only sending packets and only IP packets
     return x[Ether].src == Ether().src and x[Ether].type == 2048
 
 
-def sniffPackets(freq, pcap_path):
+def sniffPackets(freq, pcap_path, pattern):
     print("\tSniffer: Waiting for hackrf")
     evt_hackrf_ready.wait()
     evt_sniffer_ready.set()
     evt_data_collection_started.wait()
 
     print("\tSniffing started...")
-    pckts = sniff(iface=sniffer_interface, lfilter=packetFilter, stop_filter=stopfilter)
+    pckts = sniff(iface=sniffer_interface, stop_filter=stopfilter2)
 
-    time.sleep(0.5)
     evt_stop_data_collection.set()
-    stop_tb()
+    # stop_tb()
 
     print("\tSniffing stopped...")
-    wrpcap(f'{pcap_path}/{freq}Mhz_sniffed.pcap', pckts)
+    wrpcap(f'{pcap_path}/{pattern}_{freq}Mhz_sniffed.pcap', pckts)
     print("\tPcap file saved...")
 # endregion
 
-
+# pattern_funcs.P0, pattern_funcs.P1, pattern_funcs.P2, pattern_funcs.P3, pattern_funcs.P4
 # region Main Thread
 def main():
     for freq in range(start_freq, end_freq+1, step):
-        tb.osmosdr_source_0.set_center_freq(freq * 1e6)
-        file_sink_name, path = fresh_start(freq)
-        tb.blocks_file_sink_0 = blocks.file_sink(
-            gr.sizeof_gr_complex*1, file_sink_name, False)
-        tb.blocks_file_sink_0.set_unbuffered(False)
-        tb.disconnect_all()
-        tb.connect((tb.osmosdr_source_0, 0), (tb.blocks_file_sink_0, 0))
+        for pattern_func in [P0, P1, P2, P3, P4, P5]:
+            tb.osmosdr_source_0.set_center_freq(freq * 1e6)
+            file_sink_name, path = fresh_start(freq, pattern_func.__name__)
+            tb.blocks_file_sink_0 = blocks.file_sink(
+                gr.sizeof_gr_complex*1, file_sink_name, False)
+            tb.blocks_file_sink_0.set_unbuffered(False)
+            tb.disconnect_all()
+            tb.connect((tb.osmosdr_source_0, 0), (tb.blocks_file_sink_0, 0))
 
-        thread_top_block = threading.Thread(target=run_tb)
-        thread_sniffer = threading.Thread(target=sniffPackets, args=(freq,path,))
-        thread_sender = threading.Thread(target=sendPackets, args=(packet_burst_count,))
-        
-        thread_sender.start()
-        thread_sniffer.start()
-        thread_top_block.start()
+            thread_top_block = threading.Thread(target=run_tb)
+            thread_sniffer = threading.Thread(target=sniffPackets, args=(freq,path,pattern_func.__name__))
+            thread_sender = threading.Thread(target=pattern_func, args=(packet_burst_count,))
 
-        thread_sender.join()
-        thread_sniffer.join()
-        thread_top_block.join()
+            thread_sender.start()
+            thread_sniffer.start()
+            thread_top_block.start()
 
-        evt_hackrf_ready.clear()
-        evt_sniffer_ready.clear()
-        evt_start_data_collection.clear()
-        evt_data_collection_started.clear()
-        evt_stop_data_collection.clear()
+            thread_sender.join()
+            thread_sniffer.join()
+            thread_top_block.join()
 
+            evt_hackrf_ready.clear()
+            evt_sniffer_ready.clear()
+            evt_start_data_collection.clear()
+            evt_data_collection_started.clear()
+            evt_stop_data_collection.clear()
+            global stop_sniff
+            stop_sniff = False
 # endregion
 
 
@@ -206,4 +359,5 @@ if __name__ == '__main__':
     evt_start_data_collection = threading.Event()
     evt_data_collection_started = threading.Event()
     evt_stop_data_collection = threading.Event()
+    # evt_stop_sniffing = threading.Event()
     main()
